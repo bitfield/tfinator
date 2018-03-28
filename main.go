@@ -49,23 +49,34 @@ func DiffStats(p *tf.Plan) DiffStat {
 // PlanStats runs "terraform plan" in a given directory, reads the resulting
 // plan file, and returns a DiffStat representing the generated plan
 func PlanStats(path string) (DiffStat, error) {
-	return planStats(path, func(args ...string) error {
-		output, err := exec.Command(args[0], args[1:]...).CombinedOutput()
+	return planStats(path, func(verb string, args ...string) error {
+		cmdArgs := append([]string{}, verb)
+		cmdArgs = append(cmdArgs, args...)
+		cmd := exec.Command("terraform", cmdArgs...)
+		cmd.Dir = path
+		output, err := cmd.CombinedOutput()
 		if err != nil {
 			return fmt.Errorf("%s: %v", output, err)
 		}
 		return nil
 	})
 }
-func planStats(path string, runCommand func(args ...string) error) (DiffStat, error) {
-	cmd := []string{"terraform", "plan", "-out", planFileName, path}
-	if err := runCommand(cmd...); err != nil {
-		return DiffStat{}, fmt.Errorf("couldn't run %q on %q: %v", strings.Join(cmd, " "), path, err)
+func planStats(path string, runTFCommand func(verb string, args ...string) error) (DiffStat, error) {
+	planPath := filepath.Join(path, planFileName)
+	if err := runTFCommand("init", path); err != nil {
+		return DiffStat{}, fmt.Errorf("couldn't run 'terraform init' on %q: %v", path, err)
 	}
-	file, err := os.Open(filepath.Join(path, planFileName))
+	cmdLine := []string{"-out", planPath, path}
+	if err := runTFCommand("plan", cmdLine...); err != nil {
+		return DiffStat{}, fmt.Errorf("couldn't run 'terraform plan %s' on %q: %v", strings.Join(cmdLine, " "), path, err)
+	}
+	file, err := os.Open(planPath)
+	if err != nil {
+		return DiffStat{}, fmt.Errorf("couldn't open plan file for reading: %v", err)
+	}
 	plan, err := tf.ReadPlan(file)
 	if err != nil {
-		return DiffStat{}, err
+		return DiffStat{}, fmt.Errorf("couldn't parse plan file %q: %v", planPath, err)
 	}
 	return DiffStats(plan), nil
 }

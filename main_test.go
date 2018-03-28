@@ -1,6 +1,7 @@
 package tfinator
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -83,23 +84,30 @@ var (
 	}
 )
 
-func mockRunCommand(args ...string) error {
-	path := args[len(args)-1]
-	var plan *tf.Plan
-	switch {
-	case strings.Contains(path, "add-one"):
-		plan = addOnePlan
+func mockRunTFCommand(verb string, args ...string) error {
+	switch verb {
+	case "init":
+		return nil
+	case "plan":
+		path := args[len(args)-1]
+		var plan *tf.Plan
+		switch {
+		case strings.Contains(path, "add-one"):
+			plan = addOnePlan
+		default:
+			plan = emptyPlan
+		}
+		outFile, err := os.Create(filepath.Join(path, planFileName))
+		if err != nil {
+			return err
+		}
+		if err := tf.WritePlan(plan, outFile); err != nil {
+			return err
+		}
+		return nil
 	default:
-		plan = emptyPlan
+		return fmt.Errorf("unknown TF verb %q", verb)
 	}
-	outFile, err := os.Create(filepath.Join(path, planFileName))
-	if err != nil {
-		return err
-	}
-	if err := tf.WritePlan(plan, outFile); err != nil {
-		return err
-	}
-	return nil
 }
 
 func TestDiffStat(t *testing.T) {
@@ -153,7 +161,7 @@ func TestPlanStats(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		got, err := planStats(test.dir, mockRunCommand)
+		got, err := planStats(test.dir, mockRunTFCommand)
 		if err := os.Remove(filepath.Join(test.dir, planFileName)); err != nil {
 			t.Fatalf("failed to remove test plan file %q from %q", planFileName, test.dir)
 		}
