@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	emptyPlan      tf.Plan = tf.Plan{}
-	addBarAttrPlan tf.Plan = tf.Plan{
+	emptyPlan   tf.Plan = tf.Plan{}
+	addAttrPlan tf.Plan = tf.Plan{
 		Diff: &tf.Diff{
 			Modules: []*tf.ModuleDiff{
 				&tf.ModuleDiff{
@@ -18,6 +18,25 @@ var (
 								"foo": &tf.ResourceAttrDiff{
 									Old: "",
 									New: "bar",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	requiresNewPlan tf.Plan = tf.Plan{
+		Diff: &tf.Diff{
+			Modules: []*tf.ModuleDiff{
+				&tf.ModuleDiff{
+					Resources: map[string]*tf.InstanceDiff{
+						"foo": &tf.InstanceDiff{
+							Attributes: map[string]*tf.ResourceAttrDiff{
+								"foo": &tf.ResourceAttrDiff{
+									Old:         "",
+									New:         "bar",
+									RequiresNew: true,
 								},
 							},
 						},
@@ -41,8 +60,13 @@ func TestDiffStat(t *testing.T) {
 		},
 		{
 			"add bar attribute",
-			addBarAttrPlan,
+			addAttrPlan,
 			diffStat{change: 1},
+		},
+		{
+			"requires new",
+			requiresNewPlan,
+			diffStat{add: 1, change: 0, destroy: 1},
 		},
 	}
 	for _, test := range tests {

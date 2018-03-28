@@ -15,7 +15,15 @@ func DiffStats(p tf.Plan) (diffStat, error) {
 		return s, nil
 	}
 	for _, m := range d.Modules {
-		s.change += len(m.Resources)
+		for _, rdiff := range m.Resources {
+			switch {
+			case rdiff.RequiresNew():
+				s.add++
+				s.destroy++
+			default:
+				s.change++
+			}
+		}
 	}
 
 	return s, nil
