@@ -26,7 +26,40 @@ var (
 			},
 		},
 	}
+	destroyOnePlan tf.Plan = tf.Plan{
+		Diff: &tf.Diff{
+			Modules: []*tf.ModuleDiff{
+				&tf.ModuleDiff{
+					Resources: map[string]*tf.InstanceDiff{
+						"foo": &tf.InstanceDiff{
+							Destroy: true,
+						},
+					},
+				},
+			},
+		},
+	}
 	requiresNewPlan tf.Plan = tf.Plan{
+		Diff: &tf.Diff{
+			Modules: []*tf.ModuleDiff{
+				&tf.ModuleDiff{
+					Resources: map[string]*tf.InstanceDiff{
+						"foo": &tf.InstanceDiff{
+							Destroy: true,
+							Attributes: map[string]*tf.ResourceAttrDiff{
+								"foo": &tf.ResourceAttrDiff{
+									Old:         "",
+									New:         "bar",
+									RequiresNew: true,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	addInstancePlan tf.Plan = tf.Plan{
 		Diff: &tf.Diff{
 			Modules: []*tf.ModuleDiff{
 				&tf.ModuleDiff{
@@ -54,12 +87,17 @@ func TestDiffStat(t *testing.T) {
 		want     diffStat
 	}{
 		{
-			"empty plan",
+			"no diff",
 			emptyPlan,
 			diffStat{change: 0},
 		},
 		{
-			"add bar attribute",
+			"add one",
+			addInstancePlan,
+			diffStat{add: 1},
+		},
+		{
+			"change one",
 			addAttrPlan,
 			diffStat{change: 1},
 		},
@@ -67,6 +105,11 @@ func TestDiffStat(t *testing.T) {
 			"requires new",
 			requiresNewPlan,
 			diffStat{add: 1, change: 0, destroy: 1},
+		},
+		{
+			"destroy one",
+			destroyOnePlan,
+			diffStat{add: 0, change: 0, destroy: 1},
 		},
 	}
 	for _, test := range tests {

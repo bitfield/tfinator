@@ -16,10 +16,14 @@ func DiffStats(p tf.Plan) (diffStat, error) {
 	}
 	for _, m := range d.Modules {
 		for _, rdiff := range m.Resources {
-			switch {
-			case rdiff.RequiresNew():
+			switch rdiff.ChangeType() {
+			case tf.DiffDestroyCreate:
 				s.add++
 				s.destroy++
+			case tf.DiffDestroy:
+				s.destroy++
+			case tf.DiffCreate:
+				s.add++
 			default:
 				s.change++
 			}
