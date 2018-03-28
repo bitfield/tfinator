@@ -3,7 +3,9 @@ package tfinator
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 
 	tf "github.com/hashicorp/terraform/terraform"
 )
@@ -46,9 +48,19 @@ func DiffStats(p *tf.Plan) DiffStat {
 
 // PlanStats runs "terraform plan" in a given directory, reads the resulting
 // plan file, and returns a DiffStat representing the generated plan
-func PlanStats(path string, runCommand func(args ...string) error) (DiffStat, error) {
-	if err := runCommand("terraform", "plan", path, "-out", planFileName); err != nil {
-		return DiffStat{}, fmt.Errorf("couldn't run 'terraform plan' on %q: %v", path, err)
+func PlanStats(path string) (DiffStat, error) {
+	return planStats(path, func(args ...string) error {
+		output, err := exec.Command(args[0], args[1:]...).CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("%s: %v", output, err)
+		}
+		return nil
+	})
+}
+func planStats(path string, runCommand func(args ...string) error) (DiffStat, error) {
+	cmd := []string{"terraform", "plan", "-out", planFileName, path}
+	if err := runCommand(cmd...); err != nil {
+		return DiffStat{}, fmt.Errorf("couldn't run %q on %q: %v", strings.Join(cmd, " "), path, err)
 	}
 	file, err := os.Open(filepath.Join(path, planFileName))
 	plan, err := tf.ReadPlan(file)

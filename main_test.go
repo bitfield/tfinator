@@ -84,7 +84,7 @@ var (
 )
 
 func mockRunCommand(args ...string) error {
-	path := args[2]
+	path := args[len(args)-1]
 	var plan *tf.Plan
 	switch {
 	case strings.Contains(path, "add-one"):
@@ -153,15 +153,15 @@ func TestPlanStats(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		got, err := PlanStats(test.dir, mockRunCommand)
+		got, err := planStats(test.dir, mockRunCommand)
 		if err := os.Remove(filepath.Join(test.dir, planFileName)); err != nil {
 			t.Fatalf("failed to remove test plan file %q from %q", planFileName, test.dir)
 		}
 		if err != nil {
-			t.Errorf("PlanStats(%q): %s", test.dir, err)
+			t.Errorf("planStats(%q): %s", test.dir, err)
 		}
 		if got != test.want {
-			t.Errorf("PlanStats(%q) = %+v, want %+v ", test.dir, got, test.want)
+			t.Errorf("planStats(%q) = %+v, want %+v ", test.dir, got, test.want)
 		}
 	}
 }
