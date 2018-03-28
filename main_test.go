@@ -1,6 +1,9 @@
 package tfinator
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	tf "github.com/hashicorp/terraform/terraform"
@@ -59,7 +62,7 @@ var (
 			},
 		},
 	}
-	addInstancePlan = &tf.Plan{
+	addOnePlan = &tf.Plan{
 		Diff: &tf.Diff{
 			Modules: []*tf.ModuleDiff{
 				&tf.ModuleDiff{
@@ -80,6 +83,25 @@ var (
 	}
 )
 
+func mockRunCommand(args ...string) error {
+	path := args[2]
+	var plan *tf.Plan
+	switch {
+	case strings.Contains(path, "add-one"):
+		plan = addOnePlan
+	default:
+		plan = emptyPlan
+	}
+	outFile, err := os.Create(filepath.Join(path, planFileName))
+	if err != nil {
+		return err
+	}
+	if err := tf.WritePlan(plan, outFile); err != nil {
+		return err
+	}
+	return nil
+}
+
 func TestDiffStat(t *testing.T) {
 	var tests = []struct {
 		planInfo string
@@ -93,7 +115,7 @@ func TestDiffStat(t *testing.T) {
 		},
 		{
 			"add one",
-			addInstancePlan,
+			addOnePlan,
 			DiffStat{add: 1},
 		},
 		{
@@ -113,10 +135,7 @@ func TestDiffStat(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		got, err := DiffStats(test.plan)
-		if err != nil {
-			t.Errorf("DiffStats(%v): %s", test.planInfo, err)
-		}
+		got := DiffStats(test.plan)
 		if got != test.want {
 			t.Errorf("DiffStats(%v) = %+v, want %+v ", test.planInfo, got, test.want)
 		}
@@ -124,25 +143,25 @@ func TestDiffStat(t *testing.T) {
 
 }
 
-/*
-func TestPlanDir(t *testing.T) {
+func TestPlanStats(t *testing.T) {
 	var tests = []struct {
 		dir  string
-		want diffStat
+		want DiffStat
 	}{
-		{"./testdata/nodiff", diffStat{change: 0}},
-		{"./testdata/change1", diffStat{change: 1}},
+		{"./testdata/nodiff", DiffStat{change: 0}},
+		{"./testdata/add-one", DiffStat{add: 1}},
 	}
 
 	for _, test := range tests {
-		got, err := PlanDir(test.dir)
+		got, err := PlanStats(test.dir, mockRunCommand)
+		if err := os.Remove(filepath.Join(test.dir, planFileName)); err != nil {
+			t.Fatalf("failed to remove test plan file %q from %q", planFileName, test.dir)
+		}
 		if err != nil {
-			t.Errorf("PlanDir(%q): %s", test.dir, err)
+			t.Errorf("PlanStats(%q): %s", test.dir, err)
 		}
 		if got != test.want {
-			t.Errorf("PlanDir(%q) = %v, want %v ", test.dir, got, test.want)
+			t.Errorf("PlanStats(%q) = %+v, want %+v ", test.dir, got, test.want)
 		}
 	}
 }
-
-*/
