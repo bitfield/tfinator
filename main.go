@@ -2,14 +2,17 @@ package tfinator
 
 import tf "github.com/hashicorp/terraform/terraform"
 
-type diffStat struct {
+// DiffStat holds statistics on a Terraform diff
+type DiffStat struct {
 	add     int
 	change  int
 	destroy int
 }
 
-func DiffStats(p tf.Plan) (diffStat, error) {
-	s := diffStat{}
+// DiffStats reports statistics on a Terraform plan: the number of
+// resources which would be added, changed, or destroyed
+func DiffStats(p *tf.Plan) (DiffStat, error) {
+	s := DiffStat{}
 	d := p.Diff
 	if d.Empty() {
 		return s, nil
@@ -33,6 +36,8 @@ func DiffStats(p tf.Plan) (diffStat, error) {
 	return s, nil
 }
 
+/*
 func PlanDir(path string) (diffStat, error) {
 	return diffStat{}, nil
 }
+*/
