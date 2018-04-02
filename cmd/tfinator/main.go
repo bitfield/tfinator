@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/carezone/tfinator"
+	"github.com/bitfield/tfinator"
 )
 
 func main() {
